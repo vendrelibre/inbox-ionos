@@ -5,6 +5,7 @@
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import nodemailer from 'nodemailer';
 
 const HOST = process.env.IMAP_HOST || 'imap.ionos.fr';
@@ -14,7 +15,7 @@ const PASS = process.env.IMAP_PASSWORD;
 const FROM = `Rémi Dumas <${USER}>`;
 const BCC = process.env.HUBSPOT_BCC || '';
 const LOGO_URL = process.env.SIG_LOGO_URL || 'https://cdn.jsdelivr.net/gh/vendrelibre/inbox-ionos@main/logo-sig.jpg';
-const MAPS_BASE = process.env.MAPS_BASE || 'https://cdn.jsdelivr.net/gh/vendrelibre/inbox-ionos@main/maps/';
+const mapPathFor = (hash) => fileURLToPath(new URL(`./maps/${hash}.jpg`, import.meta.url));
 
 if (!USER || !PASS) { console.error('❌ IMAP manquant.'); process.exit(1); }
 
@@ -22,15 +23,19 @@ const idx = JSON.parse(readFileSync(new URL('./maps-index.json', import.meta.url
 const redo = JSON.parse(readFileSync(new URL('./redo-list.json', import.meta.url), 'utf8'));
 const isMine = new Set(redo.map((d) => `${d.to.toLowerCase()}|||${d.subject}`));
 
-function toHtml(body, mapUrl) {
+function toHtml(body, hasMap) {
   const esc = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const header = mapUrl ? `<img src="${mapUrl}" width="600" alt="Votre public, cartographié" style="display:block;border:0;max-width:100%;border-radius:8px;margin-bottom:16px">` : '';
+  const header = hasMap ? `<img src="cid:visuel" width="600" alt="Votre public, cartographié" style="display:block;border:0;max-width:100%;border-radius:8px;margin-bottom:16px">` : '';
   return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;line-height:1.5">${header}${esc.replace(/\n/g, '<br>')}<br><br><img src="${LOGO_URL}" width="200" alt="MY SEETY" style="display:block;border:0"></div>`;
 }
 
 const composer = nodemailer.createTransport({ streamTransport: true, buffer: true, newline: '\r\n' });
-async function buildRaw({ to, subject, body, mapUrl }) {
-  const info = await composer.sendMail({ from: FROM, to, subject, text: body, html: toHtml(body, mapUrl), ...(BCC ? { bcc: BCC } : {}) });
+async function buildRaw({ to, subject, body, mapPath }) {
+  const info = await composer.sendMail({
+    from: FROM, to, subject, text: body, html: toHtml(body, !!mapPath),
+    ...(mapPath ? { attachments: [{ filename: 'votre-public-cartographie.jpg', path: mapPath, cid: 'visuel' }] } : {}),
+    ...(BCC ? { bcc: BCC } : {}),
+  });
   return info.message;
 }
 
@@ -55,7 +60,7 @@ try {
     if (!m || !m.source) continue;
     const mail = await simpleParser(m.source);
     const body = (mail.text || '').trim();
-    if (body) found.push({ ...h, body, mapUrl: `${MAPS_BASE}${idx[h.to]}.jpg` });
+    if (body) found.push({ ...h, body, mapPath: mapPathFor(idx[h.to]) });
   }
 
   const oldUids = [];
