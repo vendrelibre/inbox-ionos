@@ -40,6 +40,21 @@ jobs:
           EXCLUDE_EXTRA: ${{ secrets.EXCLUDE_EXTRA }}
         run: node relance-engine.mjs
 
+      - name: Sync HubSpot (contacts + deals)
+        env:
+          IMAP_HOST: imap.ionos.fr
+          IMAP_PORT: '993'
+          IMAP_USER: ${{ secrets.IMAP_USER }}
+          IMAP_PASSWORD: ${{ secrets.IMAP_PASSWORD }}
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+          EXCLUDE_EXTRA: ${{ secrets.EXCLUDE_EXTRA }}
+          LIMIT: '10000'
+          SENT_SCAN: '800'
+          INBOX_SCAN: '2000'
+          SYNC_DEALS: '1'
+          SYNC_NOTES: '0'
+        run: node hubspot-sync.mjs
+
       - name: Keepalive (garder le cron actif)
         run: |
           date -u > last-run.txt
