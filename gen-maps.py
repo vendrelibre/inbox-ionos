@@ -21,6 +21,33 @@ def geocode(query):
     geo = json.loads(get(f"https://api.mapbox.com/geocoding/v5/mapbox.places/{gq}.json?access_token={TOKEN}&limit=1&language=fr&country=fr"))
     return geo['features'][0]['center']  # [lon, lat]
 
+def phone(d, x, y):
+    w, h = 56, 104
+    d.rounded_rectangle([x, y, x + w, y + h], radius=11, fill=TEAL)
+    d.rounded_rectangle([x + 5, y + 11, x + w - 5, y + h - 9], radius=4, fill=WHITE)
+    d.rectangle([x + 9, y + 16, x + w - 9, y + 42], fill=RED)
+    d.polygon([(x + 22, y + 24), (x + 22, y + 34), (x + 32, y + 29)], fill=WHITE)
+    for i in range(3):
+        yy = y + 50 + i * 9
+        d.rounded_rectangle([x + 9, yy, x + w - 9, yy + 5], radius=2, fill=(214, 220, 222))
+    d.rounded_rectangle([x + w // 2 - 9, y + h - 6, x + w // 2 + 9, y + h - 4], radius=1, fill=(180, 190, 192))
+
+def shop(d, x, y):
+    w, h = 168, 108
+    d.rectangle([x, y + 26, x + w, y + h], fill=(246, 248, 249))
+    sw = 21
+    for i in range(0, w, sw):
+        d.rectangle([x + i, y, x + min(i + sw, w), y + 26], fill=(RED if (i // sw) % 2 == 0 else WHITE))
+    d.rectangle([x, y, x + w, y + 26], outline=TEAL, width=2)
+    wx0, wy0, wx1, wy1 = x + 10, y + 36, x + w - 54, y + h - 8
+    d.rectangle([wx0, wy0, wx1, wy1], fill=(224, 235, 240))
+    d.rectangle([wx0, wy0, wx1, wy1], outline=TEAL, width=3)
+    d.rectangle([wx0 + 9, wy0 + 8, wx1 - 9, wy1 - 8], fill=RED)
+    d.ellipse([wx0 + 16, wy0 + 14, wx0 + 30, wy0 + 28], fill=WHITE)
+    dx0 = x + w - 46
+    d.rectangle([dx0, y + 34, x + w - 12, y + h - 8], fill=(214, 221, 224), outline=TEAL, width=2)
+    d.ellipse([x + w - 20, y + 70, x + w - 16, y + 74], fill=TEAL)
+
 def make(venue, city, lon, lat, out):
     mw, mh = 360, 230
     url = f"https://api.mapbox.com/styles/v1/mapbox/light-v11/static/{lon},{lat},11.4/{mw}x{mh}@2x?access_token={TOKEN}&logo=false"
@@ -45,13 +72,12 @@ def make(venue, city, lon, lat, out):
     rx = 404
     d.text((rx, 30), "Votre public,", font=font(25, True), fill=TEAL)
     d.text((rx, 60), "cartographié.", font=font(25, True), fill=RED)
-    def chip(y, label):
-        d.rounded_rectangle([rx, y, rx + 248, y + 34], radius=17, outline=TEAL, width=2, fill=WHITE)
-        d.ellipse([rx + 9, y + 9, rx + 25, y + 25], fill=RED)
-        d.text((rx + 38, y + 9), label, font=font(13, True), fill=TEAL)
-    chip(110, "Pub ciblée sur + de 360 apps")
-    chip(152, "Affichage urbain géolocalisé")
-    d.text((rx, 198), "Data  →  ciblage  →  public dans la salle", font=font(12), fill=GREY)
+    d.text((rx, 92), "On le touche partout où il est :", font=font(12, True), fill=GREY)
+    phone(d, rx, 108)
+    shop(d, rx + 72, 108)
+    d.text((rx + 2, 222), "Sur les apps", font=font(12, True), fill=TEAL)
+    d.text((rx + 6, 237), "(+ de 360 apps)", font=font(10), fill=GREY)
+    d.text((rx + 74, 222), "En vitrine & affichage", font=font(12, True), fill=TEAL)
     d.rectangle([0, H - 46, W, H], fill=TEAL)
     d.text((20, H - 33), "On cartographie votre public — et on le touche partout où il est.", font=font(15, True), fill=WHITE)
     try:

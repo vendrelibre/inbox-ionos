@@ -12,3 +12,7 @@ venues.json
 maps-index.json
 audience-map.png
 audience-map-real.png
+*.env.txt
+*.env.*
+notepad *
+*staging-poc*
