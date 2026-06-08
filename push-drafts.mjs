@@ -15,6 +15,13 @@ const USER = process.env.IMAP_USER;
 const PASS = process.env.IMAP_PASSWORD;
 const FROM = `Rémi Dumas <${USER}>`;
 const BCC = process.env.HUBSPOT_BCC || ''; // copie cachee auto -> log HubSpot
+const LOGO_URL = process.env.SIG_LOGO_URL || 'https://cdn.jsdelivr.net/gh/vendrelibre/inbox-ionos@main/logo-sig.jpg';
+
+// Version HTML du brouillon = texte + logo via URL hebergee (s'affiche partout).
+function toHtml(body) {
+  const esc = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;line-height:1.5">${esc.replace(/\n/g, '<br>')}<br><br><img src="${LOGO_URL}" width="200" alt="MY SEETY" style="display:block;border:0;outline:none"></div>`;
+}
 
 if (!USER || !PASS) {
   console.error('\n❌ Il manque IMAP_USER ou IMAP_PASSWORD dans .env.\n');
@@ -37,7 +44,7 @@ if (!Array.isArray(drafts) || drafts.length === 0) {
 const composer = nodemailer.createTransport({ streamTransport: true, buffer: true, newline: '\r\n' });
 
 async function buildRaw({ to, subject, body }) {
-  const info = await composer.sendMail({ from: FROM, to, subject, text: body, ...(BCC ? { bcc: BCC } : {}) });
+  const info = await composer.sendMail({ from: FROM, to, subject, text: body, html: toHtml(body), ...(BCC ? { bcc: BCC } : {}) });
   return info.message; // Buffer du message brut — RIEN n'a ete envoye.
 }
 
