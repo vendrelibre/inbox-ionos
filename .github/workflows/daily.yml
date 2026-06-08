@@ -55,6 +55,17 @@ jobs:
           SYNC_NOTES: '0'
         run: node hubspot-sync.mjs
 
+      - name: Tri des reponses (negatif -> perdu)
+        env:
+          IMAP_HOST: imap.ionos.fr
+          IMAP_PORT: '993'
+          IMAP_USER: ${{ secrets.IMAP_USER }}
+          IMAP_PASSWORD: ${{ secrets.IMAP_PASSWORD }}
+          HUBSPOT_TOKEN: ${{ secrets.HUBSPOT_TOKEN }}
+          EXCLUDE_EXTRA: ${{ secrets.EXCLUDE_EXTRA }}
+          INBOX_SCAN: '200'
+        run: node triage-replies.mjs
+
       - name: Keepalive (garder le cron actif)
         run: |
           date -u > last-run.txt

@@ -4,4 +4,5 @@ emails.json
 sent.json
 contacts.json
 relance-queue.json
+do-not-contact.json
 drafts.json

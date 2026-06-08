@@ -11,7 +11,7 @@
 //   - on saute les adresses systeme / fournisseurs / partenaires (liste EXCLUDE)
 
 import { ImapFlow } from 'imapflow';
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readFileSync } from 'node:fs';
 import nodemailer from 'nodemailer';
 
 const HOST = process.env.IMAP_HOST || 'imap.ionos.fr';
@@ -32,6 +32,10 @@ if (!USER || !PASS) {
 const EXCLUDE = /no-?reply|donotreply|notification|invoic|facturation|billing|^support@|mailer-daemon|postmaster|stripe|twilio|calendly|hubspot|wetransfer|transfernow|mondialrelay|sentry|noreply|nepasrepondre/i;
 // Domaines prives a exclure (fournisseurs/partenaires/banque/compta) — fournis via env (secret), hors code public.
 const EXCLUDE_EXTRA = (process.env.EXCLUDE_EXTRA || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+
+// Liste "ne plus jamais relancer" (reponses negatives) : fichier local do-not-contact.json + env DO_NOT_CONTACT.
+const DO_NOT = new Set((process.env.DO_NOT_CONTACT || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean));
+try { for (const e of JSON.parse(readFileSync(new URL('./do-not-contact.json', import.meta.url), 'utf8'))) DO_NOT.add(String(e).toLowerCase()); } catch { /* pas de fichier */ }
 
 const findBox = (boxes, special, rx) =>
   boxes.find((b) => b.specialUse === special) || boxes.find((b) => rx.test(`${b.path} ${b.name || ''}`));
@@ -67,7 +71,7 @@ try {
       const t = m.envelope?.date ? new Date(m.envelope.date).getTime() : 0;
       for (const r of m.envelope?.to || []) {
         const email = (r.address || '').toLowerCase();
-        if (!email || email === USER || EXCLUDE.test(email) || EXCLUDE_EXTRA.some((s) => email.includes(s))) continue;
+        if (!email || email === USER || EXCLUDE.test(email) || EXCLUDE_EXTRA.some((s) => email.includes(s)) || DO_NOT.has(email)) continue;
         const cur = sent.get(email) || { email, name: '', dates: [], lastT: 0, lastSubject: '' };
         cur.dates.push(t);
         if (t >= cur.lastT) { cur.lastT = t; cur.lastSubject = m.envelope?.subject || ''; if (r.name) cur.name = r.name; }

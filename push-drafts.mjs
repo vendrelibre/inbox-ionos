@@ -14,6 +14,7 @@ const PORT = Number(process.env.IMAP_PORT || 993);
 const USER = process.env.IMAP_USER;
 const PASS = process.env.IMAP_PASSWORD;
 const FROM = `Rémi Dumas <${USER}>`;
+const BCC = process.env.HUBSPOT_BCC || ''; // copie cachee auto -> log HubSpot
 
 if (!USER || !PASS) {
   console.error('\n❌ Il manque IMAP_USER ou IMAP_PASSWORD dans .env.\n');
@@ -36,7 +37,7 @@ if (!Array.isArray(drafts) || drafts.length === 0) {
 const composer = nodemailer.createTransport({ streamTransport: true, buffer: true, newline: '\r\n' });
 
 async function buildRaw({ to, subject, body }) {
-  const info = await composer.sendMail({ from: FROM, to, subject, text: body });
+  const info = await composer.sendMail({ from: FROM, to, subject, text: body, ...(BCC ? { bcc: BCC } : {}) });
   return info.message; // Buffer du message brut — RIEN n'a ete envoye.
 }
 
