@@ -16,11 +16,15 @@ const PASS = process.env.IMAP_PASSWORD;
 const FROM = `Rémi Dumas <${USER}>`;
 const BCC = process.env.HUBSPOT_BCC || ''; // copie cachee auto -> log HubSpot
 const LOGO_URL = process.env.SIG_LOGO_URL || 'https://cdn.jsdelivr.net/gh/vendrelibre/inbox-ionos@main/logo-sig.jpg';
+const MAPS_BASE = process.env.MAPS_BASE || 'https://cdn.jsdelivr.net/gh/vendrelibre/inbox-ionos@main/maps/';
+let MAPS = {};
+try { MAPS = JSON.parse(readFileSync(new URL('./maps-index.json', import.meta.url), 'utf8')); } catch { /* pas de cartes */ }
 
 // Version HTML du brouillon = texte + logo via URL hebergee (s'affiche partout).
-function toHtml(body) {
+function toHtml(body, mapUrl) {
   const esc = body.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;line-height:1.5">${esc.replace(/\n/g, '<br>')}<br><br><img src="${LOGO_URL}" width="200" alt="MY SEETY" style="display:block;border:0;outline:none"></div>`;
+  const header = mapUrl ? `<img src="${mapUrl}" width="600" alt="Votre public, cartographié" style="display:block;border:0;max-width:100%;border-radius:8px;margin-bottom:16px">` : '';
+  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;line-height:1.5">${header}${esc.replace(/\n/g, '<br>')}<br><br><img src="${LOGO_URL}" width="200" alt="MY SEETY" style="display:block;border:0;outline:none"></div>`;
 }
 
 if (!USER || !PASS) {
@@ -44,7 +48,8 @@ if (!Array.isArray(drafts) || drafts.length === 0) {
 const composer = nodemailer.createTransport({ streamTransport: true, buffer: true, newline: '\r\n' });
 
 async function buildRaw({ to, subject, body }) {
-  const info = await composer.sendMail({ from: FROM, to, subject, text: body, html: toHtml(body), ...(BCC ? { bcc: BCC } : {}) });
+  const mapUrl = MAPS[to.toLowerCase()] ? `${MAPS_BASE}${MAPS[to.toLowerCase()]}.jpg` : '';
+  const info = await composer.sendMail({ from: FROM, to, subject, text: body, html: toHtml(body, mapUrl), ...(BCC ? { bcc: BCC } : {}) });
   return info.message; // Buffer du message brut — RIEN n'a ete envoye.
 }
 

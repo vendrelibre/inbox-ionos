@@ -14,7 +14,7 @@ const PASS = process.env.IMAP_PASSWORD;
 const FROM = `Rémi Dumas <${USER}>`;
 const BCC = process.env.HUBSPOT_BCC || '';
 const LOGO_URL = process.env.SIG_LOGO_URL || 'https://cdn.jsdelivr.net/gh/vendrelibre/inbox-ionos@main/logo-sig.jpg';
-const MAPS_BASE = 'https://cdn.jsdelivr.net/gh/vendrelibre/inbox-ionos@main/maps/';
+const MAPS_BASE = process.env.MAPS_BASE || 'https://cdn.jsdelivr.net/gh/vendrelibre/inbox-ionos@main/maps/';
 
 if (!USER || !PASS) { console.error('❌ IMAP manquant.'); process.exit(1); }
 

@@ -1,11 +1,11 @@
-# gen-maps.py — genere une carte d'audience MY SEETY par prospect (venues.json) -> maps/<slug>.jpg
-# Ecrit maps-index.json {email: slug}. Necessite MAPBOX_TOKEN dans l'environnement.
-import os, io, json, re, hashlib, urllib.request, urllib.parse
+# gen-maps.py — visuel relance : carte Mapbox de la ville du prospect + mockups dessines (app + vitrine).
+# -> maps/<md5>.jpg + maps-index.json. (Aucune image extraite d'un deck : 100% genere, publiable.)
+import os, io, json, hashlib, urllib.request, urllib.parse
 from PIL import Image, ImageDraw, ImageFont
 
 TOKEN = os.environ['MAPBOX_TOKEN']
 BASE = r'C:\Users\mysee\Desktop\inbox-ionos'
-RED = (200, 65, 44); TEAL = (28, 74, 86); GREY = (120, 135, 140); WHITE = (255, 255, 255)
+RED = (200, 65, 44); TEAL = (28, 74, 86); GREY = (120, 135, 140); WHITE = (255, 255, 255); LIGHT = (237, 241, 242)
 
 def font(sz, bold=False):
     try:
@@ -19,7 +19,13 @@ def get(url):
 def geocode(query):
     gq = urllib.parse.quote(query)
     geo = json.loads(get(f"https://api.mapbox.com/geocoding/v5/mapbox.places/{gq}.json?access_token={TOKEN}&limit=1&language=fr&country=fr"))
-    return geo['features'][0]['center']  # [lon, lat]
+    f = geo['features'][0]; lon, lat = f['center']; city = ''
+    for c in f.get('context', []):
+        if str(c.get('id', '')).startswith('place'):
+            city = c.get('text', ''); break
+    if not city:
+        city = f.get('text', '')
+    return lon, lat, city
 
 def phone(d, x, y):
     w, h = 56, 104
@@ -49,14 +55,13 @@ def shop(d, x, y):
     d.ellipse([x + w - 20, y + 70, x + w - 16, y + 74], fill=TEAL)
 
 def make(venue, city, lon, lat, out):
+    W, H = 680, 300
+    img = Image.new('RGB', (W, H), WHITE); d = ImageDraw.Draw(img, 'RGBA')
     mw, mh = 360, 230
     url = f"https://api.mapbox.com/styles/v1/mapbox/light-v11/static/{lon},{lat},11.4/{mw}x{mh}@2x?access_token={TOKEN}&logo=false"
     mapimg = Image.open(io.BytesIO(get(url))).convert('RGB').resize((mw, mh))
-    W, H = 680, 300
-    img = Image.new('RGB', (W, H), WHITE)
-    mask = Image.new('L', (mw, mh), 0); ImageDraw.Draw(mask).rounded_rectangle([0, 0, mw, mh], 14, fill=255)
-    img.paste(mapimg, (16, 16), mask)
-    d = ImageDraw.Draw(img, 'RGBA')
+    mm = Image.new('L', (mw, mh), 0); ImageDraw.Draw(mm).rounded_rectangle([0, 0, mw, mh], 14, fill=255)
+    img.paste(mapimg, (16, 16), mm)
     cx, cy = 16 + mw * 0.5, 16 + mh * 0.46
     for r, a in [(85, 38), (62, 62), (40, 95), (22, 150)]:
         d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=(200, 65, 44, a))
@@ -64,25 +69,24 @@ def make(venue, city, lon, lat, out):
     d.ellipse([px - 13, py - 13, px + 13, py + 13], fill=TEAL)
     d.polygon([(px - 10, py + 7), (px + 10, py + 7), (px, py + 24)], fill=TEAL)
     d.ellipse([px - 5, py - 5, px + 5, py + 5], fill=WHITE)
-    d.rounded_rectangle([28, 24, 28 + d.textlength('VOTRE PUBLIC ICI', font=font(12, True)) + 14, 48], radius=7, fill=(255, 255, 255, 220))
+    d.rounded_rectangle([28, 24, 28 + d.textlength('VOTRE PUBLIC ICI', font=font(12, True)) + 14, 48], radius=7, fill=(255, 255, 255, 225))
     d.text((35, 27), "VOTRE PUBLIC ICI", font=font(12, True), fill=RED)
     lbl = f"{venue}  ·  {city}"; lw = d.textlength(lbl, font=font(15, True))
-    d.rounded_rectangle([28, 16 + mh - 42, 28 + lw + 26, 16 + mh - 12], radius=13, fill=TEAL)
-    d.text((41, 16 + mh - 37), lbl, font=font(15, True), fill=WHITE)
+    d.rounded_rectangle([28, 16 + mh - 40, 28 + lw + 26, 16 + mh - 12], radius=13, fill=TEAL)
+    d.text((41, 16 + mh - 35), lbl, font=font(15, True), fill=WHITE)
     rx = 404
     d.text((rx, 30), "Votre public,", font=font(25, True), fill=TEAL)
     d.text((rx, 60), "cartographié.", font=font(25, True), fill=RED)
     d.text((rx, 92), "On le touche partout où il est :", font=font(12, True), fill=GREY)
-    phone(d, rx, 108)
-    shop(d, rx + 72, 108)
+    phone(d, rx, 108); shop(d, rx + 72, 108)
     d.text((rx + 2, 222), "Sur les apps", font=font(12, True), fill=TEAL)
     d.text((rx + 6, 237), "(+ de 360 apps)", font=font(10), fill=GREY)
     d.text((rx + 74, 222), "En vitrine & affichage", font=font(12, True), fill=TEAL)
-    d.rectangle([0, H - 46, W, H], fill=TEAL)
-    d.text((20, H - 33), "On cartographie votre public — et on le touche partout où il est.", font=font(15, True), fill=WHITE)
+    d.rectangle([0, H - 38, W, H], fill=TEAL)
+    d.text((18, H - 28), "On cartographie votre public — et on le touche partout où il est.", font=font(14, True), fill=WHITE)
     try:
-        logo = Image.open(BASE + r'\logo-sig.jpg').convert('RGB'); logo.thumbnail((104, 104))
-        img.paste(logo, (W - logo.width - 16, H - 46 + (46 - logo.height) // 2))
+        logo = Image.open(BASE + r'\logo-sig.jpg').convert('RGB'); logo.thumbnail((92, 92))
+        img.paste(logo, (W - logo.width - 14, H - 38 + (38 - logo.height) // 2))
     except Exception:
         pass
     img.save(out, quality=86, optimize=True)
@@ -93,10 +97,10 @@ index = {}
 for v in venues:
     slug = hashlib.md5(v['email'].encode()).hexdigest()[:12]
     try:
-        lon, lat = geocode(v['query'])
-        make(v['venue'], v['city'], lon, lat, BASE + rf'\maps\{slug}.jpg')
+        lon, lat, gcity = geocode(v['query']); city = v.get('city') or gcity
+        make(v['venue'], city, lon, lat, BASE + rf'\maps\{slug}.jpg')
         index[v['email']] = slug
-        print('OK ', v['venue'], '->', slug)
+        print(f'OK   {v["venue"][:26]:26} -> {city}')
     except Exception as ex:
         print('FAIL', v['venue'], repr(ex))
 json.dump(index, open(BASE + r'\maps-index.json', 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
