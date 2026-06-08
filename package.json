@@ -1,0 +1,20 @@
+{
+  "name": "inbox-ionos-poc",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "POC lecture seule : lit les derniers mails IONOS et les enregistre en local pour tri + brouillons par Claude.",
+  "scripts": {
+    "fetch": "node --env-file=.env fetch-emails.mjs",
+    "fetch-sent": "node --env-file=.env fetch-sent.mjs",
+    "fetch-contacts": "node --env-file=.env fetch-contacts.mjs",
+    "push-drafts": "node --env-file=.env push-drafts.mjs",
+    "organize": "node --env-file=.env organize-inbox.mjs",
+    "relance": "node --env-file=.env relance-engine.mjs"
+  },
+  "dependencies": {
+    "imapflow": "^1.0.0",
+    "mailparser": "^3.6.0",
+    "nodemailer": "^8.0.10"
+  }
+}

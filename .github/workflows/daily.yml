@@ -1,0 +1,50 @@
+name: Routine quotidienne - boite IONOS
+
+on:
+  schedule:
+    - cron: '30 5 * * *'   # 05:30 UTC ~ 07:30 Paris (ete). Ajuste l'heure ici si besoin.
+  workflow_dispatch: {}     # permet de lancer la routine a la main (test)
+
+permissions:
+  contents: write           # pour le keepalive (eviter la desactivation du cron apres 60j)
+
+jobs:
+  routine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Installer les dependances
+        run: npm ci || npm install
+
+      - name: Tri - ranger les newsletters
+        env:
+          IMAP_HOST: imap.ionos.fr
+          IMAP_PORT: '993'
+          IMAP_USER: ${{ secrets.IMAP_USER }}
+          IMAP_PASSWORD: ${{ secrets.IMAP_PASSWORD }}
+          INBOX_SCAN: '5000'
+          APPLY: '1'
+          SAFELIST_EXTRA: ${{ secrets.SAFELIST_EXTRA }}
+        run: node organize-inbox.mjs
+
+      - name: Brief des relances - depose dans la boite
+        env:
+          IMAP_HOST: imap.ionos.fr
+          IMAP_PORT: '993'
+          IMAP_USER: ${{ secrets.IMAP_USER }}
+          IMAP_PASSWORD: ${{ secrets.IMAP_PASSWORD }}
+          BRIEF_TO_INBOX: '1'
+          EXCLUDE_EXTRA: ${{ secrets.EXCLUDE_EXTRA }}
+        run: node relance-engine.mjs
+
+      - name: Keepalive (garder le cron actif)
+        run: |
+          date -u > last-run.txt
+          git config user.name "inbox-bot"
+          git config user.email "inbox-bot@users.noreply.github.com"
+          git add last-run.txt
+          git commit -m "keepalive [skip ci]" || echo "rien a committer"
+          git push || echo "push impossible"

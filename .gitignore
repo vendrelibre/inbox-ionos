@@ -1,0 +1,7 @@
+node_modules/
+.env
+emails.json
+sent.json
+contacts.json
+relance-queue.json
+drafts.json
